@@ -1,0 +1,13 @@
+bertopic>=0.16
+sentence-transformers>=2.2
+umap-learn>=0.5.3
+hdbscan>=0.8.29
+scikit-learn>=1.0
+pandas>=1.5
+numpy>=1.21
+matplotlib>=3.5
+langdetect>=1.0.9
+huggingface-hub>=0.16
+torch>=2.0
+# Llama-3 labeling (optional; pipeline runs topics-only without it):
+llama-cpp-python>=0.2.0

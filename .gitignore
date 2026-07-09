@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+**/.DS_Store
+
+# Editor
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Virtual environment
+venv/
+.venv/
+
+# Data / models / outputs (do not publish raw dataset or trained artifacts)
+*.csv
+*.tsv
+*.parquet
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.bertopic
+filtered_df.json
+data/
+out/
+models/
+results/
+
+# Internal planning docs (not part of the public code release)
+Lpa_Reddit_Execution_Plan.docx
+
+# Secrets
+*.env
+.env
+*.pem
+*_key*
