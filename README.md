@@ -2,8 +2,7 @@
 
 Pipeline behind the manuscript "Lipoprotein(a): Large Language Model-Based
 Social Media Topic Modeling". Characterizes public Lp(a) discourse on Reddit
-with embedding-based topic modeling and LLM labeling. Seeded, so runs are
-reproducible by default.
+with embedding-based topic modeling and LLM labeling. 
 
 ## Pipeline
 
@@ -28,16 +27,9 @@ run_pipeline.py     end-to-end driver
 
 ```bash
 pip install -r requirements.txt
-python run_pipeline.py filtered_df.json --out out/            # full run (GPU recommended for the LLM)
+python run_pipeline.py filtered_df.json --out out/            # full run
 python run_pipeline.py filtered_df.json --out out/ --no-llm   # topics only, no labels
 ```
 
 Outputs: metadata.pkl and model.bertopic (reload with TopicModeler().load_complete_state(...)),
 group_summaries.json (reload with GroupLabeler(modeler, preloaded_state=...)), and the figures.
-
-## Reproducibility
-
-Every stochastic step is seeded from config.SEED (document-level UMAP, grouping UMAP, k-means),
-and the LLM runs at temperature 0 with a fixed seed, so a rerun reproduces the same topics,
-groups, and labels. The trained model, assignments, and labels are saved as artifacts; load them
-rather than regenerating when you just need the published results.
