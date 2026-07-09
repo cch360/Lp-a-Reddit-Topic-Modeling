@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-"""End-to-end Lp(a) topic-modeling pipeline (mirrors the manuscript).
 
-Usage:
-    python run_pipeline.py filtered_df.json --out out/
-
-Steps: load curated discussions -> fit topic model -> save state -> group + label -> save
-summaries -> render Figure 1A/1B. Set --no-llm to run topics only (no labels).
-"""
 import argparse
 import os
 
