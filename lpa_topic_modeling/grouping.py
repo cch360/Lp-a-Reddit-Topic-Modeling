@@ -1,4 +1,4 @@
-"""Topics->higher order themes"""
+"""Group topics into thematic groups and label the groups with Llama-3."""
 import json
 import os
 import re
@@ -25,6 +25,7 @@ class TopicClusterer:
         self.topic_to_group = self.group_topics(n_groups) if auto_group else None
 
     def _topic_embedding(self):
+        """L2-normalized topic c-TF-IDF vectors reduced with seeded cosine UMAP."""
         ctfidf = self.modeler.topic_model.c_tf_idf_.toarray()
         info = self.modeler.topic_model.get_topic_info()
         X = normalize(ctfidf, norm="l2", axis=1)
@@ -37,11 +38,34 @@ class TopicClusterer:
         return info, emb
 
     def group_topics(self, n_groups=config.N_GROUPS):
+        """Return a {topic: "Group_<i>"} mapping from balanced k-means."""
         info, emb = self._topic_embedding()
         labels = self._balanced_kmeans(emb, n_groups)
         return {row["Topic"]: f"Group_{labels[i]}" for i, (_, row) in enumerate(info.iterrows())}
 
+    def silhouette_scan(self, k_min=2, k_max=20, method="kmeans"):
+        """Silhouette coefficient across candidate group counts.
+
+        Uses the same embedding as the grouping step. method="kmeans" gives the conventional
+        model-selection curve; method="balanced" uses the grouping algorithm.
+
+        Returns:
+            list of (k, score).
+        """
+        _, emb = self._topic_embedding()
+        scores = []
+        for k in range(k_min, min(k_max, len(emb) - 1) + 1):
+            labels = (self._balanced_kmeans(emb, k) if method == "balanced"
+                      else KMeans(n_clusters=k, random_state=self.seed, n_init=10).fit_predict(emb))
+            if len(set(labels)) > 1:
+                scores.append((k, float(silhouette_score(emb, labels))))
+        if scores:
+            best = max(scores, key=lambda t: t[1])
+            print(f"Best silhouette: k={best[0]} ({best[1]:.3f})")
+        return scores
+
     def _balanced_kmeans(self, X, k, max_iter=100):
+        """k-means, then move the farthest points from oversized to undersized clusters."""
         n = X.shape[0]
         target = n // k
         km = KMeans(n_clusters=k, random_state=self.seed, n_init=10)
@@ -73,7 +97,7 @@ class TopicClusterer:
 
 
 class GroupLabeler:
-    """Build per-group summaries and generate distinct, human-readable group labels with Llama-3."""
+    """Build per-group summaries and generate distinct group labels with Llama-3."""
 
     def __init__(self, topic_modeler, clusterer=None, n_groups=config.N_GROUPS, seed=config.SEED,
                  temperature=config.LLM_TEMPERATURE, use_llm_labels=True, diversify=True,
@@ -98,7 +122,7 @@ class GroupLabeler:
                 self.diversify_llm_group_labels()
 
     def _topic_label(self, row):
-        """Clean the Llama-3 topic label (fall back to keyword name)."""
+        """Return the cleaned Llama-3 topic label, falling back to the keyword name."""
         val = row.get("LlamaCPP")
         if isinstance(val, list) and val:
             val = val[0]
@@ -168,17 +192,17 @@ class GroupLabeler:
         return text[:1].upper() + text[1:] if text else text
 
     def update_group_labels_manual(self, updates):
+        """Apply manual labels, e.g. {"Group_0": "New label"}."""
         for g, lab in updates.items():
             if g in self.group_summaries:
                 self.group_summaries[g]["llm_group_label"] = lab
 
-    #outputs
+    # outputs
     def current_labels(self):
         return {g: i.get("llm_group_label") for g, i in self.group_summaries.items()}
 
     def refresh_group_counts(self):
-        """Recompute each group's document total from the modeler's current topic counts.
-        Use after reduce_outliers"""
+        """Recompute each group's document total from current topic counts (use after reduce_outliers)."""
         info = self.modeler.get_cached_topic_model_info()
         counts = dict(zip(info["Topic"], info["Count"]))
         for s in self.group_summaries.values():
@@ -186,13 +210,13 @@ class GroupLabeler:
         return self.group_summaries
 
     def create_labels_for_visualization(self):
-        """Return a per-document group label (for Fig 1B) and the grouping info."""
+        """Return a per-document group label (for Figure 1B) and the grouping info."""
         g2name = {g: (i.get("llm_group_label") or g) for g, i in self.group_summaries.items()}
         labels = [g2name.get(self.topic_to_group.get(t), "Other") for t in self.modeler.topics]
         return labels, {"topic_to_group": self.topic_to_group,
                         "group_summaries": self.group_summaries, "group_to_name": g2name}
 
-    #save utils
+    # persistence
     def save_group_summaries(self, path):
         os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
         with open(path, "w") as f:

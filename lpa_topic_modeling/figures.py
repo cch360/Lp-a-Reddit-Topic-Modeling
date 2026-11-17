@@ -1,4 +1,4 @@
-"""Manuscript figures: 1A (temporal volume + milestones) and 1B (UMAP topic groups)."""
+"""Manuscript figures: 1A (temporal volume with milestones), 1B (UMAP topic groups), and the silhouette scan."""
 import os
 import numpy as np
 import pandas as pd
@@ -9,11 +9,11 @@ import umap
 
 from . import config
 
-#styling
+# styling
 mpl.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"],
-    "pdf.fonttype": 42, "ps.fonttype": 42, "svg.fonttype": "none", 
+    "pdf.fonttype": 42, "ps.fonttype": 42, "svg.fonttype": "none",
     "figure.facecolor": "white", "axes.facecolor": "white",
     "axes.edgecolor": "#333333", "axes.linewidth": 0.8,
 })
@@ -25,6 +25,7 @@ _TOL = ["#4477AA", "#EE6677", "#228833", "#CCBB44", "#66CCEE",
 
 
 def _save(fig, out_path):
+    """Save fig as PDF, EPS, PNG and TIFF using the stem of out_path."""
     if not out_path:
         return
     stem = os.path.splitext(out_path)[0]
@@ -38,7 +39,7 @@ def _save(fig, out_path):
 
 def fig1a_temporal(df, milestones=config.MILESTONES, created_col="created_utc",
                    type_col="type_of_entry", out_path=None, figsize=(7.5, 3.4)):
-  
+    """Annual stacked posts and comments with numbered milestone markers."""
     df = df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df[created_col]):
         df[created_col] = pd.to_datetime(df[created_col], unit="s", utc=True)
@@ -77,7 +78,7 @@ def fig1a_temporal(df, milestones=config.MILESTONES, created_col="created_utc",
                 fontsize=7.5, fontweight="bold", zorder=5)
     ax.set_ylim(0, ymax * 1.12)
 
-    # content-type legend 
+    # content-type legend
     ct = [Patch(fc=colmap.get(c, "#999999"), label=c) for c in order]
     ax.legend(handles=ct, title="Content type", loc="upper left",
               fontsize=8, title_fontsize=8.5, frameon=True)
@@ -129,3 +130,25 @@ def fig1b_clusters(modeler, labeler, seed=config.SEED, out_path=None, figsize=(8
     fig.tight_layout()
     _save(fig, out_path)
     return fig, emb2d, labels
+
+
+def fig_silhouette_scan(clusterer, k_min=2, k_max=20, method="kmeans", out_path=None, figsize=(6, 4)):
+    """Silhouette coefficient vs. number of groups (k), marking config.N_GROUPS and the maximum."""
+    scores = clusterer.silhouette_scan(k_min, k_max, method=method)
+    ks = [k for k, _ in scores]
+    vals = [s for _, s in scores]
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.plot(ks, vals, marker="o")
+    ax.axvline(config.N_GROUPS, ls="--", color="grey", lw=1, label=f"k = {config.N_GROUPS} (selected)")
+    if scores:
+        best = max(scores, key=lambda t: t[1])
+        ax.scatter([best[0]], [best[1]], color="red", zorder=5, label=f"max (k = {best[0]})")
+    ax.set_xlabel("Number of groups (k)")
+    ax.set_ylabel("Silhouette score")
+    ax.set_xticks(ks)
+    ax.legend()
+    fig.tight_layout()
+    if out_path:
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        print(f"Saved {out_path}")
+    return fig, scores

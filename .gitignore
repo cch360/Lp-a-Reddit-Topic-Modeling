@@ -38,3 +38,15 @@ Lpa_Reddit_Execution_Plan.docx
 .env
 *.pem
 *_key*
+
+# Private and generated revision files
+name_mask.json
+revision_results.json
+R_checkpoint.json
+lpa_subset_*.json
+group_summaries_*.json
+*.xlsx
+*.docx
+
+# Release preparation notes (not for commit)
+CLEANUP_NOTES.md

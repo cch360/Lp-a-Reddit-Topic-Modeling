@@ -1,4 +1,12 @@
+#!/usr/bin/env python3
+"""End-to-end Lp(a) topic-modeling pipeline (original submission).
 
+Usage:
+    python run_pipeline.py filtered_df.json --out out/
+
+Steps: load curated discussions -> fit topic model -> save state -> group + label -> save
+summaries -> render Figures 1A and 1B. Use --no-llm to fit topics without LLM labels.
+"""
 import argparse
 import os
 
@@ -29,7 +37,7 @@ def main():
     print(f"Topics: {n_topics} (+ outlier)")
 
     if args.reduce_outliers:
-        # relabel when the LLM is on, so labels reflect the post-reduction assignments
+        # relabel when the LLM is enabled so labels reflect post-reduction assignments
         modeler.reduce_outliers(strategy=args.outlier_strategy,
                                 threshold=args.outlier_threshold, relabel=not args.no_llm)
 

@@ -24,8 +24,7 @@ except ImportError:
 
 
 class TopicModeler:
-    """bge embeddings -> UMAP -> HDBSCAN -> c-TF-IDF, with optional Llama-3 topic labels.
-    """
+    """bge embeddings -> UMAP -> HDBSCAN -> c-TF-IDF, with optional Llama-3 topic labels."""
 
     def __init__(self, enable_llm=False, seed=config.SEED, cache_dir="models", offline_mode=False,
                  embedding_model_name=config.EMBEDDING_MODEL,
@@ -73,6 +72,7 @@ class TopicModeler:
             )
 
     def _load_llm(self, cache_dir):
+        """Load the quantized Llama-3 model, downloading it to cache_dir if needed."""
         os.makedirs(cache_dir, exist_ok=True)
         path = os.path.join(cache_dir, config.LLM_FILE)
         if not os.path.exists(path):
@@ -81,6 +81,7 @@ class TopicModeler:
                      seed=self.seed, verbose=False)
 
     def _load_bertopic(self, model_path):
+        """Load a saved BERTopic model without instantiating the pickled Llama model."""
         llama = None
         try:
             import llama_cpp as llama
@@ -97,9 +98,10 @@ class TopicModeler:
         model.representation_model = None
         return model
 
-    #pipeline
+    # pipeline
     def preprocess_texts(self, df, text_column=config.TEXT_COLUMN,
                          min_length=config.MIN_DOC_LEN, filter_english_only=config.ENGLISH_ONLY):
+        """Clean text, drop short documents, optionally keep English only; return the texts."""
         df = df.copy()
         df[text_column] = (df[text_column].fillna("")
                            .str.replace(r"http\S+", "", regex=True)
@@ -128,6 +130,7 @@ class TopicModeler:
 
     def fit_transform(self, df, text_column=config.TEXT_COLUMN, preprocess=True,
                       min_topic_size=config.MIN_TOPIC_SIZE):
+        """Fit BERTopic on the (optionally preprocessed) texts and return topic assignments."""
         texts = self.preprocess_texts(df, text_column) if preprocess else df[text_column].tolist()
         self.topic_model = BERTopic(
             embedding_model=self.embedding_model, umap_model=self.umap_model,
@@ -141,6 +144,7 @@ class TopicModeler:
         return self.topics
 
     def filter_small_topics(self, min_topic_size=config.MIN_TOPIC_SIZE):
+        """Move documents in topics smaller than min_topic_size to the outlier topic (-1)."""
         info = self.topic_model.get_topic_info()
         small = info[info["Count"] < min_topic_size]["Topic"].tolist()
         if not small:
@@ -150,8 +154,7 @@ class TopicModeler:
 
     def reduce_outliers(self, strategy=config.OUTLIER_STRATEGY,
                         threshold=config.OUTLIER_THRESHOLD, relabel=False):
-        """Reassign outlier (-1) documents to existing topics w/ bertopic builtin; refresh keyword counts.
-        """
+        """Reassign outlier (-1) documents to existing topics and refresh topic representations."""
         if self.topic_model is None:
             raise RuntimeError("Fit or load a model first.")
         before = sum(t == -1 for t in self.topics)
@@ -168,6 +171,7 @@ class TopicModeler:
         return self.topics
 
     def drop_and_refit(self, allowed_topics):
+        """Keep documents in allowed_topics and refit the model from scratch."""
         mask = [t in allowed_topics for t in self.topics]
         self.df = self.df[mask].reset_index(drop=True)
         # fresh (seeded) components for the refit
@@ -180,7 +184,7 @@ class TopicModeler:
         self.embedding_model = SentenceTransformer(self.embedding_model_name, device=config.DEVICE)
         return self.fit_transform(self.df, preprocess=False)
 
-    #access
+    # access
     def topic_model_info(self):
         return self.topic_model.get_topic_info()
 
@@ -189,7 +193,7 @@ class TopicModeler:
             return self.topic_model_info()
         return self._cached_topic_model_info
 
-    #save utils
+    # persistence
     def save_complete_state(self, metadata_path, model_path):
         if self.topic_model is None:
             raise RuntimeError("Nothing to save; fit a model first.")

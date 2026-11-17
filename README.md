@@ -1,35 +1,36 @@
-# Lp(a) Reddit Topic Modeling (v3)
+# Lp(a) Reddit Topic Modeling
 
-Pipeline behind the manuscript "Lipoprotein(a): Large Language Model-Based
-Social Media Topic Modeling". Characterizes public Lp(a) discourse on Reddit
-with embedding-based topic modeling and LLM labeling. 
+Code for "Lipoprotein(a): Large Language Model-Based Social Media Topic Modeling" (J Am Heart Assoc, under review).
 
-## Pipeline
+## Contents
 
-1. Embed each discussion with BAAI/bge-base-en-v1.5 (768-dim).
-2. Reduce with UMAP (seeded) and cluster with HDBSCAN to get topics.
-3. Describe topics with c-TF-IDF keywords and label them with Llama-3 (temperature 0).
-4. Group the topics' c-TF-IDF vectors (L2-normalize, UMAP to 3D, balanced k-means, k=10).
-5. Label groups with Llama-3, then render Figures 1A and 1B.
+- `LpA_reddit_JAHA_revision.ipynb` - analysis for the revised manuscript; reported values are written to `revision_results.json`.
+- `lpa_topic_modeling/` - topic model, thematic grouping, and figures.
+- `LpA_reddit_paper_driver.ipynb`, `run_pipeline.py` - original submission pipeline (original table and figure numbering).
 
-## Layout
+## Methods
 
-```
-lpa_topic_modeling/
-  config.py         seeds, temperature, model versions, hyperparameters, milestones
-  topic_modeler.py  TopicModeler: embed, UMAP, HDBSCAN, c-TF-IDF, optional Llama-3 topic labels
-  grouping.py       TopicClusterer (balanced k-means) and GroupLabeler (Llama-3 group labels)
-  figures.py        fig1a_temporal (with milestone overlay), fig1b_clusters
-run_pipeline.py     end-to-end driver
-```
+- **Embedding:** BAAI/bge-base-en-v1.5.
+- **Topics:** UMAP + HDBSCAN (5-D, leaf selection, min cluster size 75), chosen by cross-seed stability (Table S2); outliers reassigned by c-TF-IDF (threshold 0.1).
+- **Groups:** balanced k-means on topic c-TF-IDF vectors; k = 9 by mean silhouette over k = 4-12 and five seeds (Table S3).
+- **Labels:** Llama-3 8B (temperature 0), reviewed by two clinicians and adjudicated (Tables S4, S11).
+- **Seed:** 42 for all stochastic steps.
 
-## Run
+## Running
+
+Revision notebook: Google Colab (A100), Python 3.13; package versions in Table S8. Set `V3_PATH` and `BASE` before running. `RESUME = True` reloads saved models; `RESUME = False` refits (~1 hour with Llama-3). An optional, untracked `name_mask.json` in `BASE` masks names of individuals.
+
+Original pipeline:
 
 ```bash
 pip install -r requirements.txt
-python run_pipeline.py filtered_df.json --out out/            # full run
-python run_pipeline.py filtered_df.json --out out/ --no-llm   # topics only, no labels
+python run_pipeline.py filtered_df.json --out out/ [--no-llm]
 ```
 
-Outputs: metadata.pkl and model.bertopic (reload with TopicModeler().load_complete_state(...)),
-group_summaries.json (reload with GroupLabeler(modeler, preloaded_state=...)), and the figures.
+## Data availability
+
+Reddit content, trained models, rater sheets, and the name-mask file are not included, in accordance with platform policies. Search terms and matching patterns are in the Supplemental Material. De-identified data are available from the corresponding author on reasonable request.
+
+## License
+
+MIT

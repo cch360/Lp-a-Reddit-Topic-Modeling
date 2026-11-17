@@ -1,4 +1,4 @@
-
+"""Pipeline configuration: seeds, LLM settings, model identifiers, hyperparameters, and figure milestones."""
 import torch
 
 # --- reproducibility ---
@@ -17,22 +17,24 @@ TEXT_COLUMN = "body"
 MIN_DOC_LEN = 25               # characters, after cleaning
 ENGLISH_ONLY = True
 
-# --- topic model (document level) ---
+# --- topic model (document level); defaults of the original submission pipeline ---
+# The revision notebook selects 5-D UMAP, leaf cluster selection, and min_cluster_size = 75 by a
+# cross-seed stability rule (notebook section 5; Table S2).
 MIN_CLUSTER_SIZE = 100
 MIN_SAMPLES = 10
 N_NEIGHBORS = 10
 MIN_DIST = 0.0
-N_COMPONENTS = 2               # UMAP dims before HDBSCAN (as run)
+N_COMPONENTS = 2               # UMAP dimensions before HDBSCAN
 UMAP_METRIC = "euclidean"
 NGRAM_RANGE = (1, 3)
 MIN_TOPIC_SIZE = 10            # topics below this fold into the outlier topic
 
-# --- optional outlier reduction (reassign topic -1 docs to existing topics) ---
-OUTLIER_STRATEGY = "c-tf-idf"  # "c-tf-idf" (fast) or "embeddings" (re-embeds, more faithful)
-OUTLIER_THRESHOLD = 0.1        # lower -> reassign more (fewer remaining outliers)
+# --- optional outlier reduction (reassign topic -1 documents to existing topics) ---
+OUTLIER_STRATEGY = "c-tf-idf"  # "c-tf-idf" or "embeddings" (re-embeds documents; slower)
+OUTLIER_THRESHOLD = 0.1        # lower values reassign more documents
 
 # --- grouping (topic level) ---
-N_GROUPS = 10                  # set a priori
+N_GROUPS = 10                  # original submission (set a priori); the revision selects k = 9 by silhouette score
 GROUP_UMAP_COMPONENTS = 3
 GROUP_UMAP_NEIGHBORS = 15
 GROUP_UMAP_MIN_DIST = 0.1
@@ -46,7 +48,7 @@ TOPIC_PROMPT = (
     "a short label in the exact format 'topic: <description>'. Do not add any other commentary."
 )
 
-# --- Fig 1A milestone overlay ---
+# --- Figure 1A milestone overlay: (year, label, kind) ---
 MILESTONES = [
     (2018, "2018 AHA/ACC cholesterol guideline", "guideline"),
     (2019, "2019 ESC/EAS dyslipidaemia guideline", "guideline"),
